@@ -2,20 +2,22 @@
 #include <fstream>		// std::ifstream
 #include <sstream>		// std::istringstream
 #include <cstdlib>		// std::exit
+#include <string>		// std::string
 
 int main(int argc, char* argv[]) {
 	if (argc != 6) {
-		std::err << "Usage: " << argv[0] << "plist ptrace <pagesize> <replacement> <+/->" << std::endl;
+		std::cerr << "Usage: " << argv[0] << "plist ptrace <pagesize> <replacement> <+/->" << std::endl;
 	}
 
-	// Convert pagesize to an int
+	// Convert pagesize (argv[3]) to an integer
 	std::istringstream ss(argv[3]);
 	int x;
 	if (!(ss >> x)) {
 		std::cerr << argv[3] << " is not a number." << std::endl;
-		exit(EXIT_FAILURE);
+		std::exit(EXIT_FAILURE);
 	}
 
+	// So we have easy access to our command-line args
 	const char* PLIST 	= argv[1];
 	const char* PTRACE 	= argv[2];
 	const int PAGE_SIZE = x;
@@ -32,9 +34,28 @@ int main(int argc, char* argv[]) {
 */
 
 	// Let's read in the files we pass from the command line with ifstream
-	// PLIST: (pID, Total#MemoryLocation)
-	// PTRACE: (pId, ReferencedMemoryLocation)
-	std::ifstream ifs ()
+	// PLIST: 	(pID, Total#MemoryLocation)
+	// PTRACE: 	(pId, ReferencedMemoryLocation)
+	std::ifstream ifs_plist (PLIST, std::ifstream::in);
+	std::ifstream ifs_ptrace (PTRACE, std::ifstream::in);
+	std::string pid, total_locations;
+	std::size_t pos;
+
+	if (!ifs_plist.is_open()) {
+		std::cerr << "plist.txt: An error occurred while reading the file." << std::endl;
+		std::exit(EXIT_FAILURE);
+	} else if (!ifs_ptrace.is_open()) {
+		std::cerr << "ptrace.txt: An error occurred while reading the file." << std::endl;
+		std::exit(EXIT_FAILURE);
+	} else {
+		for(std::string line; std::getline(ifs_plist, line); ) {
+			pid = line.substr(0, 1); 			// PID
+			total_locations = line.substr(2); 	// Total number of memory locations
+			std::cout << "The pid is: " << pid
+			<< " and the total number of memory locations needed is: " 
+			<< total_locations << std::endl;
+		}
+	}
 
 
 	return 0;
