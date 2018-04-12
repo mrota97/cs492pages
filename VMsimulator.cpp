@@ -4,16 +4,16 @@
 #include <cstdlib>		// std::exit
 #include <string>		// std::string
 #include <vector>		// std::vector
-#include <array>		// std::array
 
 unsigned long pageid;
 unsigned long age = 0;
+int total_pages = 0;
 
 struct page_t {
 	unsigned long page_number;
 	int valid_bit;
 	unsigned long last_accessed;
-}
+};
 
 int main(int argc, char* argv[]) {
 	if (argc != 6) {
@@ -57,14 +57,16 @@ int main(int argc, char* argv[]) {
 		-> Page Tables 	- List of pages
 			-> page 	- Page struct
 */
-	std::vector<string> lines ();
-	std::vector<page_t[]> processes ();
-	std::vector<page_t> temp ();
+	std::vector<std::string> lines;
+	std::vector<std::vector<page_t>> processes;
+	std::vector<page_t> temp;
 
 	std::ifstream ifs_plist (PLIST, std::ifstream::in);
 	std::ifstream ifs_ptrace (PTRACE, std::ifstream::in);
 	std::string pid, total_locations;
+	int page_amount;
 	std::size_t delimiter;									// Our delimiter here is the space
+
 	if (!ifs_plist.is_open()) {
 		std::cerr << "plist.txt: An error occurred while reading the file." << std::endl;
 		std::exit(EXIT_FAILURE);
@@ -78,26 +80,56 @@ int main(int argc, char* argv[]) {
 		}
 
 		unsigned long proc_num = lines.size();
+
+
 		for(std::string line: lines) {
 			delimiter = line.find(" ");
+			// Get the total memory locations that we need for each process
 			total_locations = line.substr(delimiter+1);
-			for(unsigned long pages = 0; pages < )
-		}
-
-
-			// Create the pages and page table for the processes here.
-			for (unsgined long i = 0; i < ; i++) {
-				page_t page = {pageid++, 0, age};
+			// Pages per table = Locations needed / page size in locations;
+			page_amount = (std::atoi(total_locations.c_str()) / PAGE_SIZE);
+			for(unsigned long pages = 0; pages < page_amount; pages++) {
+				// Populate the page_table with new pages
+				unsigned long new_page_number = pageid++;
+				page_t page = {new_page_number, 0, age};
+				// std::cout << page.page_number << std::endl;
 				temp.push_back(page);
+				total_pages++;
 			}
-			page_t[] page_table = &temp[0];
-			processes.push_back(page_table);
+			// Push our new page table to the list of processes
+			// page_t* page_table = temp.data();
+			// temp.clear();
+			processes.push_back(temp);
+			temp.clear();
 		}
 		
 		std::cout 
-		<< "Number of page tables: " << processes.size()
-		<< "Number of pages in page table 0: " << (sizeof(processes[0])/sizeof(*processes[0]))
+		<< "Number of page tables: " << processes.size() << "\n"
 		<< std::endl;
+
+		std::cout
+		<< "Number of pages in each page table: " << std::endl; 
+
+		unsigned long pages = 0;
+		for (int i = 0; i < processes.size(); i++) {	
+			std::cout << "Process " << i << " has ";
+			for (int j = 0; j < processes[i].size(); j++) {
+				pages++;
+			}
+			std::cout << pages << " pages in their page table." << std::endl;
+			pages = 0;
+
+
+			// while (ptr != NULL) {
+			// 	std::cout << ptr[pages].page_number << std::endl;
+			// 	pages++;
+			// 	ptr++;	
+			// }
+
+			// std::cout 
+			// << "Process " << i << " has " << pages << " pages in their page table"
+			// << std::endl;
+		}
 	}
 
 
