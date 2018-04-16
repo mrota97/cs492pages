@@ -28,6 +28,7 @@ struct memory_t {
 struct page_t {
 	unsigned long page_number;
 	int valid_bit;
+	int used_bit;
 	unsigned long age;
 	unsigned long last_accessed;
 };
@@ -100,7 +101,7 @@ int main(int argc, char* argv[]) {
 			page_offset += page_amount;
 			for(unsigned long pages = 0; pages < page_amount; pages++) {
 				// Populate the page_table with new pages
-				page_t page = {pageid++, 0, age++, 0};
+				page_t page = {pageid++, 0, 0, age++, 0};
 				// std::cout << page.page_number << std::endl;
 				process.page_table.push_back(page);
 			}
@@ -124,7 +125,7 @@ int main(int argc, char* argv[]) {
 
 		// Let's read in ptrace now!
 		// PTRACE: 	(pId, ReferencedMemoryLocation)
-		unsigned long location, page_to_swap, index, temp_age;
+		unsigned long location, page_to_swap, index, temp_age, time_diff;
 		for(std::string line; std::getline(ifs_ptrace, line); ) {
 			delimiter = line.find(" ");
 			pid = line.substr(0, delimiter);
@@ -136,7 +137,7 @@ int main(int argc, char* argv[]) {
 				if (location >= processes[i].pagen_start && location <= processes[i].pagen_end) {
 					page_to_swap = location - processes[i].pagen_start;
 
-					if (processes[i].page_table[page_to_swap].valid_bit != 1) {
+					if (processes[i].page_table[page_to_swap].valid_bit == 0) {
 						index = processes[i].page_table.size();
 
 						if (strcmp(RALG, "FIFO") == 0) {
@@ -151,101 +152,51 @@ int main(int argc, char* argv[]) {
 
 							processes[i].page_table[index].valid_bit = 0;
 							processes[i].page_table[page_to_swap].valid_bit = 1;
-							age++;
+							processes[i].page_table[page_to_swap].age = age++;
 						}
 
 						else if (strcmp(RALG, "LRU") == 0) {
-							
+							time_diff = 0;
+
+							for (int j = 0; j < processes[i].page_table.size(); j++) {
+								if ((age - processes[i].page_table[j].last_accessed) > time_diff && processes[i].page_table[j].valid_bit == 1) {
+									time_diff = (age - processes[i].page_table[j].last_accessed);
+									index = 1;
+								}
+							}
+							processes[i].page_table[index].valid_bit = 0;
+							processes[i].page_table[page_to_swap].valid_bit = 1;
+							processes[i].page_table[index].last_accessed = age++;
+							processes[i].page_table[page_to_swap].last_accessed = age++;
+						}
+
+						else if (strcmp(RALG, "Clock") == 0) {
+							unsigned long clock = 1;
+							while (processes[i].page_table[clock].page_number != processes[i].page_table[0].page_number) {
+								if (processes[i].page_table[clock].used_bit == 0) {
+									processes[i].page_table[clock].valid_bit == 1;
+									processes[i].page_table[index].valid_bit == 0;
+								}
+								else {
+									processes[i].page_table[clock].used_bit = 0;
+								}
+								clock = (clock + 1) % processes[i].page_table.size();
+							}
+						}
+
+						if (PREPAGE) {
+							// Ran out of time to complete the prepaging algorithm
 						}
 
 						page_swaps++;
 					}
+					break;
 				}
 			}
-
-			// for (process_it = processes.begin(); process_it != processes.end(); process_it++) {
-			// 	if (location >= process_it->pagen_start && location <= process_it->pagen_end) {
-			// 		// I use the offsets I've provided in the struct definition to calculate the index of the page I need to access in the page table
-			// 		page_to_swap = location - process_it->pagen_start;
-			// 		if (process_it->page_table[page_to_swap].valid_bit != 1) {
-			// 			// A page swap needs to occur
-			// 			index = process_it->page_table.size();
-			// 			page_swaps++;
-			// 			if (strcmp(RALG, "FIFO")) {
-			// 				if (PREPAGE) {}
-			// 				else {
-			// 					temp_age = ULONG_MAX;
-								
-			// 					// First find the page that we want to swap for. This is the (first) page created
-			// 					for (int i = 0; i < process_it->page_table.size(); i++) {
-			// 						if (process_it->page_table[i].age < temp_age && process_it->page_table[i].valid_bit == 1) {
-			// 							temp_age = process_it->page_table[i].age;
-			// 							index = i;
-			// 						}
-			// 					}
-
-			// 					process_it->page_table[index].valid_bit = 0;
-			// 					process_it->page_table[location].valid_bit = 1;
-			// 					age++;
-			// 				}
-			// 			}
-			// 			else if (strcmp(RALG, "LRU")) {
-			// 				if (PREPAGE) {}
-			// 				else {
-			// 					unsigned long time_diff = 0;
-
-			// 					for (int i = 0; i < process_it->page_table.size(); i++) {
-			// 						if ((age - process_it->page_table[i].last_accessed) > time_diff && process_it->page_table[i].valid_bit == 1) {
-			// 							time_diff = (age - process_it->page_table[i].last_accessed);
-			// 							index = i;
-			// 						}
-			// 					}
-			// 					process_it->page_table[index].valid_bit = 0; 			// Flip the page we are swapping out
-			// 					process_it->page_table[location].valid_bit = 1; 		// "Swap" in the page we want
-			// 					process_it->page_table[index].last_accessed = age++;
-			// 					process_it->page_table[location].last_accessed = age++;
-			// 				}
-			// 			}
-			// 			else if (strcmp(RALG, "Clock")) {
-			// 				if (PREPAGE) {}
-			// 				else {}
-			// 			}
-			// 		}
-			// 		break;
-			// 	}
-			// }
 
 		}
 
 	}
-
-	// std::cout
-	// << "Main memory: " << std::endl;
-	// for (int i = 0; i < MEMORY_SIZE / PAGE_SIZE; i++) {
-	// 	memory_t location = main_memory[i];
-	// 	if (i == 0) 
-	// 		std::cout << "[(" << location.process_id << ", " << location.page_number << "), ";
-	// 	if (i+1 == (MEMORY_SIZE / PAGE_SIZE))
-	// 		std::cout << "(" << location.process_id << ", " << location.page_number << ")]";
-	// 	else
-	// 		std::cout << "(" << location.process_id << ", " << location.page_number << "), ";
-	// }
-	// std::cout << std::endl;
-
-	for (process_it = processes.begin(); process_it != processes.end(); process_it++) {
-
-		std::cout << "Process " << process_it->pid 
-		<< " (" 
-		<< process_it->memory << ", "
-		<< process_it->pagen_start << ", "
-		<< process_it->pagen_end << ", "
-		<< process_it->memory << ", "
-		<< "[" << "(" << process_it->page_table[0].page_number << ", " << process_it->page_table[0].last_accessed << "), "
-		<< "(" << process_it->page_table[1].page_number << ", " << process_it->page_table[1].last_accessed << "), "
-		<< "(" << process_it->page_table[2].page_number << ", " << process_it->page_table[2].last_accessed << ")]"
-		 ")" << std::endl;
-	}
-
 
 	std::cout
 	<< "Program executed successfully." << "\n"
